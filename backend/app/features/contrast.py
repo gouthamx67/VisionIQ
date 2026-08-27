@@ -1,121 +1,36 @@
 import cv2
 import numpy as np
 
+from .common import to_grayscale, validate_image_array
 
-def contrast_features(
-    image: np.ndarray,
-) -> dict[str, float]:
-    """
-    Extract global and local contrast features.
-    """
 
-    if image.ndim == 3:
-        gray = cv2.cvtColor(
-            image,
-            cv2.COLOR_BGR2GRAY,
-        )
-    else:
-        gray = image
-
+def contrast_features(image: np.ndarray) -> dict[str, float]:
+    validate_image_array(image)
+    gray = to_grayscale(image)
     gray_float = gray.astype(np.float32)
 
-    # -----------------------------------------------------
-    # Global contrast
-    # -----------------------------------------------------
+    global_std = float(gray_float.std())
 
-    global_std = float(
-        gray_float.std()
-    )
+    percentile_1 = float(np.percentile(gray_float, 1))
+    percentile_99 = float(np.percentile(gray_float, 99))
+    percentile_contrast = float(percentile_99 - percentile_1)
 
-    percentile_1 = np.percentile(
-        gray_float,
-        1,
-    )
+    local_mean = cv2.GaussianBlur(gray_float, (7, 7), 0)
+    local_squared_mean = cv2.GaussianBlur(gray_float ** 2, (7, 7), 0)
+    local_variance = local_squared_mean - local_mean ** 2
+    local_variance = np.maximum(local_variance, 0)
+    local_std = np.sqrt(local_variance)
+    local_contrast_mean = float(local_std.mean())
 
-    percentile_99 = np.percentile(
-        gray_float,
-        99,
-    )
+    gradient_x = cv2.Sobel(gray_float, cv2.CV_32F, 1, 0, ksize=3)
+    gradient_y = cv2.Sobel(gray_float, cv2.CV_32F, 0, 1, ksize=3)
+    gradient_magnitude = cv2.magnitude(gradient_x, gradient_y)
 
-    percentile_contrast = float(
-        percentile_99 - percentile_1
-    )
-
-    # -----------------------------------------------------
-    # Local contrast
-    # -----------------------------------------------------
-
-    local_mean = cv2.GaussianBlur(
-        gray_float,
-        (7, 7),
-        0,
-    )
-
-    local_squared_mean = cv2.GaussianBlur(
-        gray_float ** 2,
-        (7, 7),
-        0,
-    )
-
-    local_variance = (
-        local_squared_mean
-        - local_mean ** 2
-    )
-
-    local_variance = np.maximum(
-        local_variance,
-        0,
-    )
-
-    local_std = np.sqrt(
-        local_variance
-    )
-
-    local_contrast_mean = float(
-        local_std.mean()
-    )
-
-    # -----------------------------------------------------
-    # Gradient statistics
-    # -----------------------------------------------------
-
-    gradient_x = cv2.Sobel(
-        gray_float,
-        cv2.CV_32F,
-        1,
-        0,
-        ksize=3,
-    )
-
-    gradient_y = cv2.Sobel(
-        gray_float,
-        cv2.CV_32F,
-        0,
-        1,
-        ksize=3,
-    )
-
-    gradient_magnitude = cv2.magnitude(
-        gradient_x,
-        gradient_y,
-    )
-
-    gradient_mean = float(
-        gradient_magnitude.mean()
-    )
-
-    gradient_std = float(
-        gradient_magnitude.std()
-    )
+    gradient_mean = float(gradient_magnitude.mean())
+    gradient_std = float(gradient_magnitude.std())
 
     strong_gradient_threshold = 50.0
-
-    strong_gradient_ratio = float(
-        np.mean(
-            gradient_magnitude
-            >= strong_gradient_threshold
-        )
-    )
+    strong_gradient_ratio = float(np.mean(gradient_magnitude >= strong_gradient_threshold))
 
     return {
         "global_contrast": global_std,

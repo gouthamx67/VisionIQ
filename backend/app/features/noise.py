@@ -1,116 +1,35 @@
 import cv2
 import numpy as np
 
+from .common import to_grayscale, validate_image_array
+
 
 def calculate_entropy(gray: np.ndarray) -> float:
-    """
-    Calculate Shannon entropy of a grayscale image.
-    """
-
-    histogram = cv2.calcHist(
-        [gray],
-        [0],
-        None,
-        [256],
-        [0, 256],
-    )
-
+    histogram = cv2.calcHist([gray], [0], None, [256], [0, 256])
     histogram = histogram.flatten()
-
     probabilities = histogram / histogram.sum()
-
-    probabilities = probabilities[
-        probabilities > 0
-    ]
-
-    entropy = -np.sum(
-        probabilities * np.log2(probabilities)
-    )
-
+    probabilities = probabilities[probabilities > 0]
+    entropy = -np.sum(probabilities * np.log2(probabilities))
     return float(entropy)
 
 
 def noise_features(image: np.ndarray) -> dict[str, float]:
-    """
-    Extract noise-related features from an image.
-
-    These measurements provide evidence about random
-    high-frequency variation but do not independently
-    determine whether an image is noisy.
-    """
-
-    if image.ndim == 3:
-        gray = cv2.cvtColor(
-            image,
-            cv2.COLOR_BGR2GRAY,
-        )
-    else:
-        gray = image
-
+    validate_image_array(image)
+    gray = to_grayscale(image)
     gray_float = gray.astype(np.float32)
 
-    # -----------------------------------------------------
-    # Global variation
-    # -----------------------------------------------------
+    grayscale_std = float(gray_float.std())
 
-    grayscale_std = float(
-        gray_float.std()
-    )
+    local_mean = cv2.GaussianBlur(gray_float, (5, 5), 0)
+    local_squared_mean = cv2.GaussianBlur(gray_float ** 2, (5, 5), 0)
+    local_variance = local_squared_mean - local_mean ** 2
+    local_variance_mean = float(np.mean(local_variance))
 
-    # -----------------------------------------------------
-    # Local variance
-    # -----------------------------------------------------
-
-    local_mean = cv2.GaussianBlur(
-        gray_float,
-        (5, 5),
-        0,
-    )
-
-    local_squared_mean = cv2.GaussianBlur(
-        gray_float ** 2,
-        (5, 5),
-        0,
-    )
-
-    local_variance = (
-        local_squared_mean
-        - local_mean ** 2
-    )
-
-    local_variance_mean = float(
-        np.mean(local_variance)
-    )
-
-    # -----------------------------------------------------
-    # High-frequency residual
-    # -----------------------------------------------------
-
-    blurred = cv2.GaussianBlur(
-        gray_float,
-        (5, 5),
-        0,
-    )
-
-    residual = (
-        gray_float - blurred
-    )
-
-    residual_mean = float(
-        residual.mean()
-    )
-
-    residual_std = float(
-        residual.std()
-    )
-
-    residual_abs_mean = float(
-        np.mean(np.abs(residual))
-    )
-
-    # -----------------------------------------------------
-    # Entropy
-    # -----------------------------------------------------
+    blurred = cv2.GaussianBlur(gray_float, (5, 5), 0)
+    residual = gray_float - blurred
+    residual_mean = float(residual.mean())
+    residual_std = float(residual.std())
+    residual_abs_mean = float(np.mean(np.abs(residual)))
 
     entropy = calculate_entropy(gray)
 
