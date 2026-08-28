@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionIQ - Image Quality Analyzer</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        #result { margin-top: 20px; padding: 20px; border: 1px solid #ccc; display: none; text-align: left; }
+        .score { font-size: 40px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>VisionIQ</h1>
+    <p>Upload an image to analyze its quality</p>
+    <input type="file" id="imageInput" accept="image/*">
+    <button onclick="analyzeImage()">Analyze Image</button>
+    <div id="result"></div>
+
+    <script>
+        async function analyzeImage() {
+            const input = document.getElementById('imageInput');
+            const file = input.files[0];
+            if (!file) { alert("Please select an image!"); return; }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <h2>Analysis Result</h2>
+                <div class="score">${data.quality_score} / 100</div>
+                <p><strong>Label:</strong> ${data.quality_label}</p>
+                <h3>Issues:</h3>
+                <pre>${JSON.stringify(data.issues, null, 2)}</pre>
+            `;
+        }
+    </script>
+</body>
+</html>
