@@ -12,27 +12,10 @@ FEATURE_PATH = os.path.join(ROOT, "dataset/metadata/feature_dataset.csv")
 ARTIFACT_DIR = os.path.join(ROOT, "ml/artifacts")
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
-EXCLUDED_COLUMNS = [
-    "source_id",
-    "split",
-    "variant_id",
-    "degradation",
-    "severity",
-    "severity_name",
-    "is_degraded",
-    # Image dimensions are identical across degradation classes
-    # in this dataset and provide no useful degradation signal.
-    "width",
-    "height",
-    "aspect_ratio",
-]
+EXCLUDED_COLUMNS = ["source_id", "split", "variant_id", "degradation", "severity", "severity_name", "is_degraded"]
 
 df = pd.read_csv(FEATURE_PATH)
-features = [
-    c for c in df.columns
-    if c not in EXCLUDED_COLUMNS
-    and c not in {"width", "height", "aspect_ratio"}
-]
+features = [c for c in df.columns if c not in EXCLUDED_COLUMNS]
 X = df[features]
 y_degraded = df["is_degraded"]
 y_type = df["degradation"]
@@ -45,15 +28,7 @@ test_mask = df["split"] == "test"
 le_stage1 = LabelEncoder()
 y_stage1 = le_stage1.fit_transform(y_degraded)
 # Fixed: Added class_weight="balanced" to help the model detect the few clean images
-clf_stage1 = RandomForestClassifier(
-    n_estimators=1500,
-    class_weight="balanced_subsample",
-    max_features="sqrt",
-    min_samples_leaf=2,
-    max_depth=None,
-    random_state=42,
-    n_jobs=-1,
-)
+clf_stage1 = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
 clf_stage1.fit(X[train_mask], y_stage1[train_mask])
 pred_stage1 = clf_stage1.predict(X[test_mask])
 print("STAGE 1 (Clean vs Degraded) Test Results")
@@ -71,15 +46,7 @@ test_deg_mask = (df.loc[degraded_indices, "split"] == "test")
 
 le_stage2 = LabelEncoder()
 y_stage2 = le_stage2.fit_transform(y_deg)
-clf_stage2 = RandomForestClassifier(
-    n_estimators=1500,
-    class_weight="balanced_subsample",
-    max_features="sqrt",
-    min_samples_leaf=2,
-    max_depth=None,
-    random_state=42,
-    n_jobs=-1,
-)
+clf_stage2 = RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=42, n_jobs=-1)
 clf_stage2.fit(X_deg[train_deg_mask], y_stage2[train_deg_mask])
 pred_stage2 = clf_stage2.predict(X_deg[test_deg_mask])
 print("\nSTAGE 2 (Degradation Type) Test Results")
