@@ -1,0 +1,38 @@
+On branch main
+Changes not staged for commit:
+  (use "git add/rm <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   Dockerfile
+	modified:   README.md
+	modified:   database.py
+	modified:   docker-compose.yml
+	modified:   frontend/Dockerfile
+	modified:   frontend/src/App.jsx
+	deleted:    ml/artifacts/backup_after_decision_fix/decision.py.before_stage2_overrides
+	deleted:    ml/evaluate.py.backup
+	deleted:    ml/train.py.backup
+	deleted:    ml/train_hierarchical.py.backup
+	deleted:    ml/train_hierarchical.py.before_feature_fix
+	deleted:    quality/decision.py.backup
+	deleted:    quality/decision.py.bak
+	deleted:    quality/decision.py.bak2
+	deleted:    quality/decision.py.bak3
+	deleted:    quality/decision.py.bak4
+	deleted:    quality/decision.py.bak5
+	deleted:    quality/decision.py.bak6
+	deleted:    quality/decision.py.before_clean_gate
+	deleted:    quality/decision.py.before_compression_features
+	deleted:    quality/decision.py.before_cv_rules
+	deleted:    quality/decision.py.before_final_rules
+	deleted:    quality/decision.py.before_gate_fix
+	deleted:    quality/decision.py.before_rules_tuning
+	deleted:    quality/decision.py.final_backup
+	deleted:    vision/features.py.backup
+	deleted:    vision/features.py.before_compression_features
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	frontend/nginx/
+	submission_git_status.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

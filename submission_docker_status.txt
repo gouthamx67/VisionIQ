@@ -1,0 +1,3 @@
+NAME                  IMAGE               COMMAND                  SERVICE    CREATED         STATUS         PORTS
+visioniq-backend-1    visioniq-backend    "uvicorn api:app --h…"   backend    9 minutes ago   Up 9 minutes   8000/tcp
+visioniq-frontend-1   visioniq-frontend   "/docker-entrypoint.…"   frontend   9 minutes ago   Up 8 minutes   0.0.0.0:80->80/tcp, [::]:80->80/tcp
