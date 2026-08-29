@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: visioniq-backend
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    envVars:
+      PORT: 10000
+      FRONTEND_URL:
+        fromService:
+          type: static
+          name: visioniq-frontend
+          property: url
+    healthCheckPath: /health
+    autoDeploy: true
+
+  - type: static
+    name: visioniq-frontend
+    env: docker
+    plan: free
+    buildCommand: npm run build
+    startCommand: nginx -g "daemon off;"
+    dockerfilePath: frontend/Dockerfile
+    publishPath: frontend/dist
+    envVars:
+      VITE_API_BASE:
+        fromService:
+          type: web
+          name: visioniq-backend
+          property: url
+    autoDeploy: true
