@@ -27,5 +27,10 @@ services:
         fromService:
           type: web
           name: visioniq-backend
-          property: url
+          property: web.service.uri
+      FRONTEND_URL:
+        fromService:
+          type: web
+          name: visioniq-backend
+          property: web.service.uri
     autoDeploy: true
