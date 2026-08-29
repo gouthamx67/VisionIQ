@@ -132,139 +132,6 @@ def calculate_texture_variation(
     )
 
 
-
-def calculate_compression_features(
-    gray: np.ndarray,
-) -> tuple[float, float, float]:
-    """
-    Estimate JPEG/compression artifacts using block-boundary
-    discontinuities and 8x8 DCT high-frequency energy.
-
-    Returns:
-        blocking_score:
-            Average discontinuity across 8-pixel block boundaries.
-        dct_high_freq_ratio:
-            Fraction of DCT energy in high-frequency coefficients.
-        dct_zero_ratio:
-            Fraction of near-zero DCT coefficients.
-    """
-    gray_float = gray.astype(np.float32)
-
-    h, w = gray.shape
-
-    # Crop to complete 8x8 blocks.
-    h8 = (h // 8) * 8
-    w8 = (w // 8) * 8
-
-    if h8 < 16 or w8 < 16:
-        return 0.0, 0.0, 0.0
-
-    cropped = gray_float[:h8, :w8]
-
-    # -------------------------------------------------
-    # JPEG 8x8 blocking discontinuity
-    # -------------------------------------------------
-
-    vertical_diff = np.abs(
-        cropped[:, 8:] - cropped[:, :-8]
-    )
-
-    horizontal_diff = np.abs(
-        cropped[8:, :] - cropped[:-8, :]
-    )
-
-    # Compare exact block boundaries against nearby
-    # non-boundary locations.
-    vertical_boundary = np.mean(
-        vertical_diff[:, 7::8]
-    )
-
-    vertical_nonboundary = np.mean(
-        np.delete(
-            vertical_diff,
-            np.arange(7, vertical_diff.shape[1], 8),
-            axis=1,
-        )
-    )
-
-    horizontal_boundary = np.mean(
-        horizontal_diff[7::8, :]
-    )
-
-    horizontal_nonboundary = np.mean(
-        np.delete(
-            horizontal_diff,
-            np.arange(7, horizontal_diff.shape[0], 8),
-            axis=0,
-        )
-    )
-
-    blocking_score = float(
-        (
-            vertical_boundary
-            + horizontal_boundary
-        )
-        / (
-            vertical_nonboundary
-            + horizontal_nonboundary
-            + 1e-6
-        )
-    )
-
-    # -------------------------------------------------
-    # 8x8 DCT statistics
-    # -------------------------------------------------
-
-    high_freq_ratios = []
-    zero_ratios = []
-
-    for y in range(0, h8, 8):
-        for x in range(0, w8, 8):
-            block = cropped[y:y + 8, x:x + 8]
-
-            dct = cv2.dct(
-                block - np.mean(block)
-            )
-
-            energy = dct ** 2
-            total_energy = float(
-                np.sum(energy)
-            )
-
-            if total_energy <= 1e-8:
-                continue
-
-            # Bottom/right portion represents higher
-            # spatial frequencies.
-            high_freq_energy = float(
-                np.sum(
-                    energy[3:, 3:]
-                )
-            )
-
-            high_freq_ratios.append(
-                high_freq_energy
-                / total_energy
-            )
-
-            zero_ratios.append(
-                float(
-                    np.mean(
-                        np.abs(dct) < 1.0
-                    )
-                )
-            )
-
-    if not high_freq_ratios:
-        return blocking_score, 0.0, 0.0
-
-    return (
-        blocking_score,
-        float(np.mean(high_freq_ratios)),
-        float(np.mean(zero_ratios)),
-    )
-
-
 def extract_features(
     image: np.ndarray,
 ) -> dict[str, float]:
@@ -390,18 +257,6 @@ def extract_features(
     )
 
     # -------------------------------------------------
-    # Compression / JPEG artifacts
-    # -------------------------------------------------
-
-    (
-        blocking_score,
-        dct_high_freq_ratio,
-        dct_zero_ratio,
-    ) = calculate_compression_features(
-        gray
-    )
-
-    # -------------------------------------------------
     # Noise
     # -------------------------------------------------
 
@@ -442,9 +297,6 @@ def extract_features(
     # -------------------------------------------------
 
     return {
-        "blocking_score": blocking_score,
-        "dct_high_freq_ratio": dct_high_freq_ratio,
-        "dct_zero_ratio": dct_zero_ratio,
         "width": float(width),
         "height": float(height),
         "aspect_ratio": float(

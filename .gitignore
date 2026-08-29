@@ -1,53 +1,24 @@
 # Python
 __pycache__/
-*.py[cod]
-*.so
-
-# Virtual environment
+*.pyc
 .venv/
 venv/
-env/
 
-# Environment variables / secrets
-.env
-.env.*
-!.env.example
+# Dataset
+dataset/raw/source/*
+dataset/raw/clean/*
+dataset/generated/*
+!dataset/raw/source/.gitkeep
+!dataset/raw/clean/.gitkeep
+!dataset/generated/.gitkeep
 
-# Jupyter
-.ipynb_checkpoints/
+# Database
+*.db
 
-# IDE
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
 
 # Logs
 *.log
-logs/
-
-# Python tooling
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
-
-# Generated datasets
-data/raw/
-data/processed/
-
-# Model artifacts
-*.joblib
-*.pkl
-*.pt
-*.pth
-
-# Temporary files
-tmp/
-temp/

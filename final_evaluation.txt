@@ -1,0 +1,86 @@
+
+==============================================================================================================
+VISIONIQ STAGE 2 DIAGNOSTIC
+==============================================================================================================
+
+EVALUATED: 112
+
+STAGE 2 RF CONFUSION:
+stage2_prediction  blur  compression  motion_blur  noise  overexposure  underexposure  All
+true                                                                                      
+blur                 14            0            1      0             1              0   16
+compression           0            8            1      1             2              0   12
+motion_blur           0            2           13      0             1              0   16
+noise                 0            0            0     15             1              0   16
+none                  0            7            1      2             2              0   12
+overexposure          0            2            0      1            12              0   15
+underexposure         0            0            0      0             0             16   16
+All                  14           19           16     19            19             16  103
+
+STAGE 2 RF ACCURACY:
+0.7573
+
+FINAL CONFUSION:
+final          blur  compression  motion_blur  noise  none  overexposure  underexposure  All
+true                                                                                        
+blur             14            0            1      0     0             1              0   16
+compression       0            8            1      1     4             2              0   16
+motion_blur       0            2           13      0     0             1              0   16
+noise             0            0            0     15     0             1              0   16
+none              0            7            1      2     4             2              0   16
+overexposure      0            2            0      1     1            12              0   16
+underexposure     0            0            0      0     0             0             16   16
+All              14           19           16     19     9            19             16  112
+
+FINAL ACCURACY:
+0.7321
+
+==============================================================================================================
+MOTION BLUR DIAGNOSTIC
+==============================================================================================================
+                               id        true  stage1_prob stage2_prediction  stage2_confidence cv_candidates        final  final_confidence
+ff95bf5ddb4bdbd7__motion_blur__s3 motion_blur        0.997       motion_blur              0.900          blur  motion_blur             0.900
+105e70c573b87d7e__motion_blur__s3 motion_blur        0.899       motion_blur              0.734                motion_blur             0.734
+8e2059e2f11b0c30__motion_blur__s3 motion_blur        0.969       motion_blur              0.632                motion_blur             0.632
+c2aa138ee3a59b05__motion_blur__s3 motion_blur        0.943       motion_blur              0.881                motion_blur             0.881
+1c67b783f78b18dd__motion_blur__s3 motion_blur        0.948       motion_blur              0.741                motion_blur             0.741
+b47318f2a6f65202__motion_blur__s3 motion_blur        0.595       compression              0.578                compression             0.578
+e3d8430df8ae6fd8__motion_blur__s3 motion_blur        0.933       motion_blur              0.772                motion_blur             0.772
+1d3ba71e9002721a__motion_blur__s3 motion_blur        0.890       motion_blur              0.809                motion_blur             0.809
+2430b9bffb5ff52d__motion_blur__s3 motion_blur        0.990       motion_blur              0.821                motion_blur             0.821
+3b3ed6a27e07126c__motion_blur__s3 motion_blur        0.796       motion_blur              0.472                motion_blur             0.472
+4286197d2b6fc188__motion_blur__s3 motion_blur        0.894       motion_blur              0.611                motion_blur             0.611
+57f3508e600d3370__motion_blur__s3 motion_blur        0.960       motion_blur              0.876                motion_blur             0.876
+feca143d5e249b9f__motion_blur__s3 motion_blur        0.961      overexposure              0.900  overexposure overexposure             0.900
+0f8ce814489c0792__motion_blur__s3 motion_blur        0.958       motion_blur              0.871                motion_blur             0.871
+1dd31e9059c49199__motion_blur__s3 motion_blur        0.919       motion_blur              0.603                motion_blur             0.603
+d53d17dd8ecded4a__motion_blur__s3 motion_blur        0.673       compression              0.603                compression             0.603
+
+==============================================================================================================
+COMPRESSION DIAGNOSTIC
+==============================================================================================================
+                               id        true  stage1_prob stage2_prediction  stage2_confidence cv_candidates        final  final_confidence
+ff95bf5ddb4bdbd7__compression__s3 compression        0.973       motion_blur              0.748   compression  motion_blur             0.748
+105e70c573b87d7e__compression__s3 compression        0.595       compression              0.532                compression             0.532
+8e2059e2f11b0c30__compression__s3 compression        0.645      overexposure              0.560               overexposure             0.560
+c2aa138ee3a59b05__compression__s3 compression        0.539       compression              0.477                compression             0.477
+1c67b783f78b18dd__compression__s3 compression        0.516       compression              0.708                compression             0.708
+b47318f2a6f65202__compression__s3 compression        0.493               NaN                NaN                       none             1.000
+e3d8430df8ae6fd8__compression__s3 compression        0.591       compression              0.730                compression             0.730
+1d3ba71e9002721a__compression__s3 compression        0.539       compression              0.647                compression             0.647
+2430b9bffb5ff52d__compression__s3 compression        0.441               NaN                NaN                       none             1.000
+3b3ed6a27e07126c__compression__s3 compression        0.501       compression              0.742                compression             0.742
+4286197d2b6fc188__compression__s3 compression        0.625       compression              0.650                compression             0.650
+57f3508e600d3370__compression__s3 compression        0.429               NaN                NaN                       none             1.000
+feca143d5e249b9f__compression__s3 compression        0.948      overexposure              0.960  overexposure overexposure             0.960
+0f8ce814489c0792__compression__s3 compression        0.495               NaN                NaN                       none             1.000
+1dd31e9059c49199__compression__s3 compression        0.827             noise              0.764                      noise             0.764
+d53d17dd8ecded4a__compression__s3 compression        0.771       compression              0.363                compression             0.363
+
+==============================================================================================================
+CV OVERRIDE IMPACT
+==============================================================================================================
+Stage 2 predictions changed by decision layer: 0 / 112
+
+FINAL CONFIDENCE:
+0.8225

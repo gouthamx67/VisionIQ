@@ -332,7 +332,7 @@ def analyze_image(image_path):
     # ---------------------------------------------------------
 
     should_run_stage2 = (
-        rf_degraded_prob >= 0.50
+        rf_degraded_prob >= 0.70
         or obvious_cv_degradation
     )
 
@@ -341,16 +341,13 @@ def analyze_image(image_path):
         pred_stage2 = int(clf_stage2.predict(X)[0])
         prob_stage2 = clf_stage2.predict_proba(X)[0]
 
-        rf_deg_type = le_stage2.inverse_transform(
+        deg_type = le_stage2.inverse_transform(
             [pred_stage2]
         )[0]
 
-        rf_confidence = float(
+        confidence = float(
             prob_stage2[pred_stage2]
         )
-
-        deg_type = rf_deg_type
-        confidence = rf_confidence
 
         # -----------------------------------------------------
         # Use independent CV evidence to correct obvious cases.
@@ -395,36 +392,48 @@ def analyze_image(image_path):
             and laplacian < 15
         )
 
-        cv_deg_type = None
-
         if strong_underexposure:
-            cv_deg_type = "underexposure"
+            deg_type = "underexposure"
 
         elif strong_overexposure:
-            cv_deg_type = "overexposure"
+            deg_type = "overexposure"
 
         elif strong_noise:
-            cv_deg_type = "noise"
+            deg_type = "noise"
 
         elif strong_compression:
-            cv_deg_type = "compression"
+            deg_type = "compression"
 
         elif strong_motion_blur:
-            cv_deg_type = "motion_blur"
+            deg_type = "motion_blur"
 
         elif strong_blur:
-            cv_deg_type = "blur"
+            deg_type = "blur"
+        # -----------------------------------------------------
+        # Final confidence
+        #
+        # When independent CV evidence overrides the RF class,
+        # do not use the RF probability of the overridden class.
+        # The RF may assign that class a very low probability even
+        # when the directly measurable CV evidence is strong.
+        # -----------------------------------------------------
 
-        # CV may override only an uncertain RF prediction.
-        if (
-            cv_deg_type is not None
-            and rf_confidence < 0.70
-        ):
-            deg_type = cv_deg_type
+        # Stage 2 remains authoritative when sufficiently confident.
+        # CV evidence may only override an uncertain Stage 2 result.
+        cv_override = (
+            deg_type in cv_candidates
+            and confidence < 0.70
+        )
+
+        if cv_override:
             confidence = 0.90
         else:
-            deg_type = rf_deg_type
-            confidence = rf_confidence
+            final_class_idx = list(le_stage2.classes_).index(
+                deg_type
+            )
+            confidence = float(
+                prob_stage2[final_class_idx]
+            )
 
         # -----------------------------------------------------
         # Add classification result.

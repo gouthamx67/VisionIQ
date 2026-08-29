@@ -45,9 +45,6 @@ EXCLUDED_COLUMNS = [
     "severity",
     "severity_name",
     "is_degraded",
-    "width",
-    "height",
-    "aspect_ratio",
 ]
 
 FEATURE_NAMES = [
@@ -67,9 +64,8 @@ def _cv_candidates(features):
     """
     Independent CV evidence.
 
-    These rules are intentionally conservative. They should only
-    override/support the ML classifier when the image contains
-    strong, directly measurable evidence of degradation.
+    These rules are deliberately conservative. They are used to
+    prevent Stage 1's RF from hiding obvious degradations.
     """
 
     candidates = []
@@ -83,74 +79,29 @@ def _cv_candidates(features):
     laplacian = features.get("laplacian_variance", 0.0)
     noise = features.get("noise_estimate", 0.0)
 
-    # ---------------------------------------------------------
     # Underexposure
-    #
-    # Require stronger evidence than a mildly dark image.
-    # ---------------------------------------------------------
     if (
-        brightness < 55
-        or dark_ratio > 0.45
-        or black_clip > 0.05
+        brightness < 70
+        or dark_ratio > 0.35
+        or black_clip > 0.03
     ):
         candidates.append("underexposure")
 
-    # ---------------------------------------------------------
     # Overexposure
-    #
-    # Generated overexposure can have only moderate global
-    # brightness, so use bright-pixel/clipping evidence as well.
-    # ---------------------------------------------------------
     if (
-        brightness > 210
-        or bright_ratio > 0.45
-        or white_clip > 0.05
-        or (
-            bright_ratio > 0.07
-            and white_clip > 0.002
-            and brightness > 140
-        )
+        brightness > 190
+        or bright_ratio > 0.35
+        or white_clip > 0.03
     ):
         candidates.append("overexposure")
 
-    # ---------------------------------------------------------
-    # Noise
-    #
-    # Noise is characterized by elevated noise, gradient and
-    # texture variation together.
-    # ---------------------------------------------------------
-    texture = features.get("texture_variation", 0.0)
-    gradient = features.get("mean_gradient", 0.0)
-
-    if (
-        noise >= 10
-        and texture >= 10
-        and gradient >= 55
-        and laplacian < 2500
-    ):
+    # Strong noise
+    if noise > 18:
         candidates.append("noise")
 
-    # ---------------------------------------------------------
-    # Compression
-    #
-    # Compression overlaps with clean images on basic texture
-    # statistics, so require stronger compression-specific
-    # evidence and explicitly exclude exposure degradation.
-    # ---------------------------------------------------------
-    if (
-        2.5 <= noise <= 4.2
-        and 2.5 <= texture <= 3.5
-        and 50 <= laplacian < 250
-        and brightness < 100
-        and bright_ratio < 0.05
-        and white_clip < 0.002
-    ):
-        candidates.append("compression")
-
-    # ---------------------------------------------------------
-    # Blur
-    # ---------------------------------------------------------
-    if laplacian < 30:
+    # Blur.
+    # Keep this threshold lower than the old Stage-1 gate.
+    if laplacian < 100:
         candidates.append("blur")
 
     return candidates
@@ -176,39 +127,17 @@ def _severity(issue_type, features):
         return "low"
 
     if issue_type == "overexposure":
-        bright_ratio = features.get("bright_ratio", 0.0)
-        white_clip = features.get("white_clip_ratio", 0.0)
-
-        if brightness > 220 or bright_ratio > 0.30 or white_clip > 0.02:
+        if brightness > 220:
             return "high"
-
-        if (
-            brightness > 175
-            or bright_ratio > 0.07
-            or white_clip > 0.002
-        ):
+        if brightness > 190:
             return "medium"
-
         return "low"
 
     if issue_type == "noise":
-        texture = features.get("texture_variation", 0.0)
-        gradient = features.get("mean_gradient", 0.0)
-
-        if (
-            noise >= 20
-            and texture >= 16
-            and gradient >= 80
-        ):
+        if noise >= 35:
             return "high"
-
-        if (
-            noise >= 10
-            and texture >= 10
-            and gradient >= 55
-        ):
+        if noise >= 18:
             return "medium"
-
         return "low"
 
     if issue_type == "compression":
@@ -301,9 +230,6 @@ def analyze_image(image_path):
     # Stage 1
     # ---------------------------------------------------------
 
-        # Match the exact feature schema used when the model was trained.
-    X = X.reindex(columns=clf_stage1.feature_names_in_)
-
     prob_stage1 = clf_stage1.predict_proba(X)[0]
 
     stage1_class_1 = list(le_stage1.classes_).index(1)
@@ -321,18 +247,8 @@ def analyze_image(image_path):
 
     obvious_cv_degradation = bool(cv_candidates)
 
-    # ---------------------------------------------------------
-    # Stage 2 gate
-    #
-    # Stage 2 is useful when degradation evidence is reasonably
-    # strong. Do not let moderate RF uncertainty automatically
-    # turn clean images into a degradation class.
-    #
-    # Strong independent CV evidence can still force Stage 2.
-    # ---------------------------------------------------------
-
     should_run_stage2 = (
-        rf_degraded_prob >= 0.50
+        rf_degraded_prob >= 0.45
         or obvious_cv_degradation
     )
 
@@ -341,90 +257,57 @@ def analyze_image(image_path):
         pred_stage2 = int(clf_stage2.predict(X)[0])
         prob_stage2 = clf_stage2.predict_proba(X)[0]
 
-        rf_deg_type = le_stage2.inverse_transform(
+        deg_type = le_stage2.inverse_transform(
             [pred_stage2]
         )[0]
 
-        rf_confidence = float(
+        confidence = float(
             prob_stage2[pred_stage2]
         )
-
-        deg_type = rf_deg_type
-        confidence = rf_confidence
 
         # -----------------------------------------------------
         # Use independent CV evidence to correct obvious cases.
         # -----------------------------------------------------
 
-        brightness = features.get("mean_brightness", 128.0)
-        bright_ratio = features.get("bright_ratio", 0.0)
-        white_clip = features.get("white_clip_ratio", 0.0)
-        dark_ratio = features.get("dark_ratio", 0.0)
-        black_clip = features.get("black_clip_ratio", 0.0)
+        if cv_candidates:
 
-        laplacian = features.get("laplacian_variance", 0.0)
-        gradient = features.get("mean_gradient", 0.0)
-        noise_est = features.get("noise_estimate", 0.0)
-        texture = features.get("texture_variation", 0.0)
+            # Exposure has strong direct evidence.
+            if "underexposure" in cv_candidates:
+                if features.get("mean_brightness", 128) < 70:
+                    deg_type = "underexposure"
 
-        strong_overexposure = (
-            "overexposure" in cv_candidates
-        )
+            elif "overexposure" in cv_candidates:
+                if (
+                    features.get("mean_brightness", 128) > 190
+                    or features.get("bright_ratio", 0) > 0.35
+                ):
+                    deg_type = "overexposure"
 
-        strong_underexposure = (
-            "underexposure" in cv_candidates
-        )
+            # Noise has a direct measurable signal.
+            elif "noise" in cv_candidates:
+                if features.get("noise_estimate", 0) > 18:
+                    deg_type = "noise"
 
-        strong_noise = (
-            "noise" in cv_candidates
-        )
+            # If the RF thinks blur/motion blur, keep its distinction.
+            elif deg_type in ("blur", "motion_blur"):
+                pass
 
-        strong_compression = (
-            "compression" in cv_candidates
-        )
+            # If RF predicts a clearly unrelated class but image has
+            # strong blur evidence, use blur as the safer diagnosis.
+            elif "blur" in cv_candidates:
+                if features.get("laplacian_variance", 0) < 100:
+                    deg_type = "blur"
 
-        strong_motion_blur = (
-            "blur" in cv_candidates
-            and 15 <= laplacian < 30
-            and gradient < 25
-            and noise_est < 3
-        )
+        # -----------------------------------------------------
+        # Motion blur vs normal blur
+        #
+        # The classifier's motion-blur distinction is retained when
+        # confidence is strong. Otherwise normal blur is safer.
+        # -----------------------------------------------------
 
-        strong_blur = (
-            "blur" in cv_candidates
-            and laplacian < 15
-        )
-
-        cv_deg_type = None
-
-        if strong_underexposure:
-            cv_deg_type = "underexposure"
-
-        elif strong_overexposure:
-            cv_deg_type = "overexposure"
-
-        elif strong_noise:
-            cv_deg_type = "noise"
-
-        elif strong_compression:
-            cv_deg_type = "compression"
-
-        elif strong_motion_blur:
-            cv_deg_type = "motion_blur"
-
-        elif strong_blur:
-            cv_deg_type = "blur"
-
-        # CV may override only an uncertain RF prediction.
-        if (
-            cv_deg_type is not None
-            and rf_confidence < 0.70
-        ):
-            deg_type = cv_deg_type
-            confidence = 0.90
-        else:
-            deg_type = rf_deg_type
-            confidence = rf_confidence
+        if deg_type == "motion_blur":
+            if confidence < 0.60:
+                deg_type = "blur"
 
         # -----------------------------------------------------
         # Add classification result.
@@ -447,11 +330,7 @@ def analyze_image(image_path):
 
     noise_est = features.get("noise_estimate", 0.0)
 
-    if (
-        noise_est >= 13
-        and features.get("texture_variation", 0.0) >= 12
-        and features.get("mean_gradient", 0.0) >= 65
-    ):
+    if noise_est > 18:
 
         existing_noise = any(
             issue["type"] == "noise"
@@ -460,9 +339,9 @@ def analyze_image(image_path):
 
         if not existing_noise:
 
-            if noise_est >= 25:
+            if noise_est >= 35:
                 severity = "high"
-            elif noise_est >= 16:
+            elif noise_est >= 22:
                 severity = "medium"
             else:
                 severity = "low"
@@ -512,8 +391,8 @@ def analyze_image(image_path):
             )
 
     if (
-        brightness > 175
-        or features.get("bright_ratio", 0) > 0.30
+        brightness > 190
+        or features.get("bright_ratio", 0) > 0.35
     ):
 
         if not any(
@@ -559,18 +438,6 @@ def analyze_image(image_path):
         "clean_vs_degraded_prob": round(
             float(degraded_prob), 3
         ),
-        "stage1_degraded_prob": round(
-            float(rf_degraded_prob), 3
-        ),
-        "stage2_prediction": (
-            deg_type if should_run_stage2 else None
-        ),
-        "stage2_confidence": (
-            round(float(confidence), 3)
-            if should_run_stage2
-            else None
-        ),
-        "cv_candidates": cv_candidates,
         "issues": issues,
         "inference_time_ms": round(
             elapsed * 1000, 2
