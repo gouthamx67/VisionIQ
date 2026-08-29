@@ -23,11 +23,8 @@ services:
     dockerfilePath: frontend/Dockerfile
     publishPath: frontend/dist
     envVars:
-      VITE_API_BASE:
-        fromService:
-          type: web
-          name: visioniq-backend
-          property: web.service.uri
+      # Explicitly set the backend URL - change this if your backend service name changes
+      VITE_API_BASE: https://visioniq-backend-1nvl.onrender.com
       FRONTEND_URL:
         fromService:
           type: web
