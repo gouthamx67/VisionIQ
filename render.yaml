@@ -23,14 +23,10 @@ services:
     dockerfilePath: frontend/Dockerfile
     publishPath: frontend/dist
     envVars:
-      VITE_API_BASE:
-        fromService:
-          type: web
-          name: visioniq-backend
-          property: web.service.uri
+      VITE_API_BASE: https://visioniq-backend-1nvl.onrender.com
       FRONTEND_URL:
         fromService:
           type: web
           name: visioniq-backend
-          property: web.service.uri
+          property: url
     autoDeploy: true
